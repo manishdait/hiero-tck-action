@@ -13,19 +13,29 @@
 - `buildContext` input, so a workflow that checks out more than the SDK can keep the sibling
   directories out of the build context, and out of every image built by a Dockerfile doing
   `COPY . .`. The bundled workflows now check the SDK out into `sdk/` and use it.
-- Optional `ref` per registry entry, letting the nightly pin a known-good SDK commit when an
-  upstream default branch is broken, without editing the workflow.
+- Optional `ref` per registry entry, letting the scheduled matrix pin a known-good SDK commit
+  when an upstream default branch is broken, without editing the workflow.
 - Standalone scripts under `scripts/`, each runnable outside Actions from documented
   environment variables, with `action.yml` reduced to glue.
 - A bats suite under `tests/` covering result classification, output completeness, preset
   resolution and merging, argument splitting, readiness and teardown, with snapshot
   comparison of the rendered step summary.
-- Lint, pull-request self-test, and registry-driven nightly workflows.
+- Lint, pull-request self-test, and registry-driven scheduled workflows.
 - `scripts/validate-sdks.sh`, asserting the registry and `dockerfiles/` agree in both
   directions and that the README's preset table is generated from the registry.
 
+### Changed
+
+- The SDK matrix now runs weekly (Mondays 03:00 UTC) instead of nightly, and is named
+  accordingly. A full pass is dominated by the C++ build at roughly 1.5 hours, which does not
+  earn a daily slot.
+
 ### Fixed
 
+- Readiness now probes both loopback families rather than `127.0.0.1` alone. A server that
+  resolves `localhost` itself and binds the first address it is given lands on `::1` under
+  `docker run --network host`, and was reported dead after the full startup timeout while it
+  was serving normally. This is what the C++ preset hit on every scheduled run.
 - Every declared output is now written on every path. A run that produced no report emitted
   only seven of eleven, leaving `genuineFailures`, `infraFailures` and `unimplementedMethods`
   as empty strings that broke arithmetic in consuming steps.
