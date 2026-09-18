@@ -23,6 +23,23 @@ dump_container_logs() {
   echo "::endgroup::"
 }
 
+# Either loopback family counts. A server that resolves "localhost" itself and
+# binds the first address it gets lands on ::1 under `docker run --network
+# host`: Docker's /etc/hosts maps ::1 to localhost and getaddrinfo returns it
+# first once the host has IPv6. Probing only 127.0.0.1 then reports a perfectly
+# healthy server as dead - the C++ TCK server, which calls listen("localhost"),
+# failed every run this way. The suite itself reaches either family, because
+# JSON_RPC_SERVER_URL is a localhost URL too.
+tcp_listening() {
+  local addr
+  for addr in 127.0.0.1 ::1; do
+    if (exec 3<>"/dev/tcp/${addr}/${RPC_PORT}") 2>/dev/null; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 container_exists() {
   [[ -n "${HIERO_RPC_CONTAINER:-}" ]] || return 1
   [[ -n "$(docker ps -aq -f name="$HIERO_RPC_CONTAINER" 2>/dev/null)" ]]
@@ -53,7 +70,7 @@ while ((SECONDS < deadline)); do
   # the application behind it is serving yet - plenty of servers bind before
   # they finish wiring up routes - so a reset that does not answer is a reason
   # to poll again, not to fail the run.
-  if (exec 3<>"/dev/tcp/127.0.0.1/${RPC_PORT}") 2>/dev/null; then
+  if tcp_listening; then
     tcp_seen=true
     if response=$(curl --silent --max-time 10 -H "Content-Type: application/json" \
       --data '{"jsonrpc":"2.0","method":"reset","params":[],"id":1}' \

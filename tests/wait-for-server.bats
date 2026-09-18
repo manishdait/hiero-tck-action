@@ -92,3 +92,24 @@ use_docker_fixture() {
   [[ "$output" == *"::error title=RPC layer not ready::"* ]]
   [[ "$output" == *"accepted connections"* ]]
 }
+
+# Regression: the C++ TCK server calls listen("localhost"), which under
+# `docker run --network host` binds ::1 rather than 127.0.0.1. An IPv4-only
+# probe timed out against a server that was up and serving all along.
+@test "a server bound only to the IPv6 loopback is still found" {
+  if ! python3 -c 'import socket; socket.socket(socket.AF_INET6).bind(("::1", 0))' 2>/dev/null; then
+    skip "no IPv6 loopback on this host"
+  fi
+  local port_file="$BATS_TEST_TMPDIR/port"
+  local calls_file="$BATS_TEST_TMPDIR/calls"
+  python3 "$REPO_ROOT/tests/fixtures/rpc-server.py" \
+    "$port_file" "$calls_file" 0 ::1 &
+  local server_pid=$!
+  while [[ ! -s "$port_file" ]]; do sleep 0.05; done
+  run env START_SERVER=false RPC_PORT="$(cat "$port_file")" STARTUP_TIMEOUT=5 \
+    "$REPO_ROOT/scripts/wait-for-server.sh"
+  kill "$server_pid"
+  wait "$server_pid" 2>/dev/null || true
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"RPC server is ready."* ]]
+}

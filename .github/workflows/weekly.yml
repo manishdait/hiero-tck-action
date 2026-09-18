@@ -1,16 +1,16 @@
 ---
-name: Nightly SDK matrix
+name: Weekly SDK matrix
 
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: nightly-${{ github.ref }}
+  group: weekly-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           # `ref` is optional in the registry: empty tracks the SDK's default
-          # branch, which is the point of a nightly, but a maintainer can pin a
+          # branch, which is the point of this run, but a maintainer can pin a
           # known-good ref there when an upstream main is broken, without
           # touching this workflow.
           matrix=$(jq -c '[to_entries[] | {
@@ -87,4 +87,4 @@ jobs:
           buildContext: ${{ github.workspace }}/sdk
           testMatrix: ${{ matrix.sdk.testMatrix }}
           dockerBuildArgs: ${{ matrix.sdk.id == 'cpp' && '--load --cache-from type=gha --cache-to type=gha,mode=max' || '' }}
-          artifactName: nightly-${{ matrix.sdk.id }}
+          artifactName: weekly-${{ matrix.sdk.id }}

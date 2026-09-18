@@ -168,7 +168,7 @@ steps:
 
 > [!TIP]
 > A common pattern is `testMatrix` on pull requests for fast feedback, and the full suite
-> nightly on a schedule.
+> on a schedule.
 
 
 ## Slow-building SDKs
@@ -273,7 +273,7 @@ To act on the results yourself, give the step an `id` and read its outputs:
 
 ## Usage
 
-A pull-request check that runs only the method being worked on, plus the full suite nightly:
+A pull-request check that runs only the method being worked on, plus the full suite on a schedule:
 
 ```yml
 name: TCK
@@ -307,7 +307,7 @@ jobs:
         uses: hiero-hackers/hiero-tck-action@main
         with:
           sdk: python
-          # Fast, targeted run on PRs; whole suite on the nightly.
+          # Fast, targeted run on PRs; whole suite on the scheduled run.
           testMatrix: ${{ github.event_name == 'pull_request' && 'src/tests/crypto-service/test-account-create-transaction.ts' || '' }}
           artifactName: tck-report-${{ github.event_name }}
 

@@ -4,13 +4,17 @@ argv[1]  file the chosen port is written to
 argv[2]  file every POST is appended to, one line per call
 argv[3]  optional count of leading POSTs answered with a non-JSON-RPC body,
          simulating a server that is listening before its RPC layer serves
+argv[4]  optional bind address, default 127.0.0.1. Pass ::1 to stand in for a
+         server that resolved "localhost" and bound only the IPv6 loopback.
 """
 
 import http.server
 import json
+import socket
 import sys
 
 WARMUP_CALLS = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+BIND_HOST = sys.argv[4] if len(sys.argv) > 4 else "127.0.0.1"
 calls = 0
 
 
@@ -44,7 +48,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
-server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+class Server(http.server.HTTPServer):
+    address_family = socket.AF_INET6 if ":" in BIND_HOST else socket.AF_INET
+
+
+server = Server((BIND_HOST, 0), Handler)
 with open(sys.argv[1], "w", encoding="utf-8") as port_file:
     port_file.write(str(server.server_port))
 server.serve_forever()
